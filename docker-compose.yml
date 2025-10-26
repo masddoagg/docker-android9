@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  android9-kasmvnc:
+    build: .
+    container_name: android9-emulator
+    ports:
+      - "5901:5901"  # KasmVNC port
+    environment:
+      - DISPLAY=:1
+      - VNC_RESOLUTION=1280x720
+    volumes:
+      - android_data:/home/android/.android
+    privileged: true
+    devices:
+      - /dev/kvm:/dev/kvm  # For hardware acceleration (if available)
+    restart: unless-stopped
+
+volumes:
+  android_data:
