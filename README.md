@@ -7,7 +7,7 @@ This project provides a complete one-click installation of Android 9 running in 
 Run the single installation command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-repo/android9-docker/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/masddoagg/docker-android9/refs/heads/fix/android9-codespaces-docker-kasm-vnc-77x/install.sh | bash
 ```
 
 Or manually:
