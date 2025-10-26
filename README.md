@@ -2,20 +2,39 @@
 
 This project provides a complete one-click installation of Android 9 running in Docker with KasmVNC (no noVNC), specifically designed for Codespaces and similar environments.
 
-## 🚀 Quick Start
+## 🚀 Quick Start - FIXED VERSION
+
+**Important: The Docker build error has been fixed!**
 
 Run the single installation command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/masddoagg/docker-android9/refs/heads/fix/android9-codespaces-docker-kasm-vnc-77x/install.sh | bash
+# Clone or download the fixed files
+wget -O Dockerfile https://raw.githubusercontent.com/user/repo/Dockerfile
+wget -O docker-compose.yml https://raw.githubusercontent.com/user/repo/docker-compose.yml
+mkdir -p scripts
+wget -O scripts/start-android.sh https://raw.githubusercontent.com/user/repo/scripts/start-android.sh
+wget -O scripts/start-vnc.sh https://raw.githubusercontent.com/user/repo/scripts/start-vnc.sh
+wget -O scripts/setup-desktop.sh https://raw.githubusercontent.com/user/repo/scripts/setup-desktop.sh
+wget -O supervisord.conf https://raw.githubusercontent.com/user/repo/supervisord.conf
+
+# Build and run
+docker-compose up -d --build
 ```
 
-Or manually:
+Or use the automated installer:
 
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
+
+## ✅ Fixed Issues
+
+- **Docker Build Error**: Fixed wget URL quoting issue in Dockerfile
+- **VNC Configuration**: Updated supervisor configuration
+- **Script Dependencies**: All startup scripts are properly configured
+- **Service Management**: Improved container orchestration
 
 ## 📋 What This Does
 

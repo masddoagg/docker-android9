@@ -42,7 +42,7 @@ RUN wget -q https://github.com/kasmtech/KasmVNC/releases/download/v1.2.0/kasmvnc
 
 # Install Android x86
 RUN mkdir -p /android && cd /android \
-    && wget -q https://osdn.net/frs/redir.php?m=acc&f=android-x86%2F71931%2Fandroid-x86_64-9.0-r2.iso -O android-x86_64-9.0-r2.iso
+    && wget -q "https://osdn.net/frs/redir.php?m=acc&f=android-x86%2F71931%2Fandroid-x86_64-9.0-r2.iso" -O android-x86_64-9.0-r2.iso
 
 # Create Android VM disk
 RUN cd /android && qemu-img create -f qcow2 android.qcow2 8G
