@@ -1,51 +1,30 @@
 FROM budtmo/docker-android:emulator_9.0
 
-# Switch to root for installations
+# The budtmo/docker-android image already includes:
+# - Android emulator
+# - x11vnc on port 5900 (no password by default)
+# - noVNC web interface on port 6080
+# 
+# We'll add password protection and expose on port 5901 with user ms:ms
+
 USER root
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-ENV DISPLAY=:1
-ENV VNC_PORT=5901
-ENV VNC_RESOLUTION=1280x720
-ENV VNC_COL_DEPTH=24
-
-# Install TigerVNC and dependencies (simpler than KasmVNC)
+# Install x11vnc if not present and create password file
 RUN apt-get update && apt-get install -y \
-    wget \
-    supervisor \
-    tigervnc-standalone-server \
-    tigervnc-common \
+    x11vnc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create VNC user 'ms' with password 'ms'
-RUN useradd -m -s /bin/bash ms \
-    && echo 'ms:ms' | chpasswd \
-    && usermod -aG sudo ms
+# Create VNC password file for user 'ms' with password 'ms'
+RUN mkdir -p /root/.vnc \
+    && x11vnc -storepasswd ms /root/.vnc/passwd \
+    && chmod 600 /root/.vnc/passwd
 
-# Configure VNC with password 'ms' (as root)
-RUN mkdir -p /home/ms/.vnc \
-    && echo 'ms' | vncpasswd -f > /home/ms/.vnc/passwd \
-    && chmod 600 /home/ms/.vnc/passwd \
-    && chown -R ms:ms /home/ms/.vnc
+# Modify the VNC startup to use password and port 5901
+RUN mkdir -p /home/androidusr/docker-android/mixins/scripts \
+    && echo '#!/bin/bash' > /home/androidusr/docker-android/mixins/scripts/vnc-with-password.sh \
+    && echo 'x11vnc -display :1 -forever -shared -rfbport 5901 -rfbauth /root/.vnc/passwd' >> /home/androidusr/docker-android/mixins/scripts/vnc-with-password.sh \
+    && chmod +x /home/androidusr/docker-android/mixins/scripts/vnc-with-password.sh
 
-# Create startup script directory
-RUN mkdir -p /home/ms/scripts \
-    && chown -R ms:ms /home/ms/scripts
-
-# Copy scripts
-COPY --chown=ms:ms scripts/ /home/ms/scripts/
-RUN chmod +x /home/ms/scripts/*.sh 2>/dev/null || true
-
-# Create supervisor configuration
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Expose VNC port
+# Expose VNC port 5901
 EXPOSE 5901
-
-# Set working directory
-WORKDIR /home/ms
-
-# Start services
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
