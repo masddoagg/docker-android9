@@ -5,7 +5,6 @@ services:
     build: .
     container_name: android9-emulator
     ports:
-      - "5901:5901"  # VNC port with password (ms:ms)
       - "5554:5554"  # ADB port
       - "5555:5555"  # ADB port
       - "6080:6080"  # noVNC web interface
@@ -22,7 +21,7 @@ services:
     command: >
       "/home/androidusr/docker-android/mixins/scripts/run.sh &
       sleep 15 &&
-      /home/androidusr/docker-android/mixins/scripts/vnc-with-password.sh"
+      /home/androidusr/docker-android/mixins/scripts/start-novnc.sh"
 
 volumes:
   android_data:
