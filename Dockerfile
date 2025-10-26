@@ -1,96 +1,87 @@
-FROM ubuntu:22.04
+FROM ubuntu:18.04
 
-# Avoid prompts from apt
+# Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Set display and VNC settings
 ENV DISPLAY=:1
 ENV VNC_PORT=5901
-ENV VNC_RESOLUTION=1280x720
+ENV NO_VNC_PORT=6901
+ENV VNC_RESOLUTION=1024x768
 ENV VNC_COL_DEPTH=24
 
-# Install base dependencies
+# Install base packages
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
     unzip \
-    openjdk-8-jdk \
+    supervisor \
+    net-tools \
+    libnss3-dev \
+    libatk-bridge2.0-dev \
+    libdrm-dev \
+    libxkbcommon-dev \
+    libgtk-3-dev \
+    libgbm-dev \
+    libasound-dev \
     python3 \
     python3-pip \
-    supervisor \
-    xvfb \
-    fluxbox \
-    dbus-x11 \
-    pulseaudio \
-    sudo \
-    libxrandr2 \
-    libxtst6 \
-    libxss1 \
-    libasound2 \
+    openjdk-8-jdk \
+    qemu-kvm \
+    qemu-utils \
+    libvirt-daemon-system \
+    libvirt-clients \
+    bridge-utils \
+    virt-manager \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install KasmVNC
-RUN wget https://github.com/kasmtech/KasmVNC/releases/download/v1.2.0/kasmvncserver_jammy_1.2.0_amd64.deb -O kasmvnc.deb \
-    && apt-get update \
-    && dpkg -i kasmvnc.deb || apt-get install -f -y \
-    && rm kasmvnc.deb
+RUN wget -q https://github.com/kasmtech/KasmVNC/releases/download/v1.2.0/kasmvncserver_bionic_1.2.0_amd64.deb \
+    && dpkg -i kasmvncserver_bionic_1.2.0_amd64.deb || true \
+    && apt-get update && apt-get install -f -y \
+    && rm kasmvncserver_bionic_1.2.0_amd64.deb
 
-# Set JAVA_HOME
-ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-ENV PATH=$PATH:$JAVA_HOME/bin
+# Install Android x86
+RUN mkdir -p /android && cd /android \
+    && wget -q https://osdn.net/frs/redir.php?m=acc&f=android-x86%2F71931%2Fandroid-x86_64-9.0-r2.iso -O android-x86_64-9.0-r2.iso
 
-# Create user for VNC
-RUN useradd -m -s /bin/bash android \
-    && echo "android:android" | chpasswd \
-    && usermod -aG sudo android
+# Create Android VM disk
+RUN cd /android && qemu-img create -f qcow2 android.qcow2 8G
 
-# Switch to android user
-USER android
-WORKDIR /home/android
+# Install XFCE4 desktop environment
+RUN apt-get update && apt-get install -y \
+    xfce4 \
+    xfce4-goodies \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Download Android SDK
-ENV ANDROID_SDK_ROOT=/home/android/android-sdk
-ENV PATH=$PATH:$ANDROID_SDK_ROOT/tools:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/emulator
+# Create VNC user
+RUN useradd -m -s /bin/bash vnc \
+    && echo 'vnc:vnc' | chpasswd \
+    && adduser vnc sudo
 
-RUN mkdir -p $ANDROID_SDK_ROOT && \
-    cd $ANDROID_SDK_ROOT && \
-    wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
-    unzip commandlinetools-linux-9477386_latest.zip && \
-    rm commandlinetools-linux-9477386_latest.zip && \
-    mkdir -p cmdline-tools/latest && \
-    mv cmdline-tools/* cmdline-tools/latest/ || true
+# Setup KasmVNC for user
+USER vnc
+WORKDIR /home/vnc
 
-# Accept licenses and install Android 9 system image
-RUN yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses && \
-    $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-28" && \
-    $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "system-images;android-28;google_apis;x86_64" && \
-    $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "emulator"
+# Configure KasmVNC
+RUN mkdir -p /home/vnc/.vnc \
+    && echo 'vnc' | vncpasswd -f > /home/vnc/.vnc/passwd \
+    && chmod 600 /home/vnc/.vnc/passwd
 
-# Create Android Virtual Device (AVD)
-RUN echo "no" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/avdmanager create avd \
-    -n android9_emulator \
-    -k "system-images;android-28;google_apis;x86_64" \
-    -d "pixel"
+# Create startup script for Android
+RUN mkdir -p /home/vnc/scripts
+COPY --chown=vnc:vnc scripts/ /home/vnc/scripts/
+RUN chmod +x /home/vnc/scripts/*.sh
 
-# Switch back to root for system configuration
+# Create supervisor configuration
 USER root
-
-# Create VNC password file for KasmVNC
-RUN mkdir -p /home/android/.vnc && \
-    echo "android" | vncpasswd -f > /home/android/.vnc/passwd && \
-    chmod 600 /home/android/.vnc/passwd && \
-    chown -R android:android /home/android/.vnc
-
-# Create startup script
-COPY start.sh /start.sh
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-RUN chmod +x /start.sh
 
 # Expose VNC port
 EXPOSE 5901
 
-# Set the user back to android
-USER android
-WORKDIR /home/android
+# Set working directory
+WORKDIR /home/vnc
 
-CMD ["/start.sh"]
+# Start services
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

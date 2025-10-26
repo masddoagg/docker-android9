@@ -1,253 +1,220 @@
-# Android 9 with KasmVNC Docker Setup
+# Android 9 Docker with KasmVNC Setup
 
-This project provides a Docker container running Android 9 emulator with KasmVNC (no noVNC) for remote access in Codespaces or any Linux environment.
+This project provides a complete one-click installation of Android 9 running in Docker with KasmVNC (no noVNC), specifically designed for Codespaces and similar environments.
 
-## Quick Start
+## 🚀 Quick Start
 
-1. **Install Docker** (if not already installed):
-   ```bash
-   ./install_docker.sh
-   ```
-
-2. **Build and run the container**:
-   ```bash
-   docker-compose up -d
-   ```
-
-3. **Connect via VNC**: Use any VNC client to connect to `localhost:5901`
-
-## Prerequisites
-
-### Install Docker (Required)
-
-Since Docker is not available in this environment, you'll need to install it first:
+Run the single installation command:
 
 ```bash
-# Update package index
-sudo apt update
-
-# Install required packages
-sudo apt install -y \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg \
-    lsb-release
-
-# Add Docker's official GPG key
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-
-# Set up the stable repository
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
-  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-# Update package index again
-sudo apt update
-
-# Install Docker Engine
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-# Add your user to the docker group
-sudo usermod -aG docker $USER
-
-# Start Docker service
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Verify Docker installation
-docker --version
+curl -fsSL https://raw.githubusercontent.com/your-repo/android9-docker/main/install.sh | bash
 ```
 
-**Important**: After installing Docker, you may need to log out and log back in for the group changes to take effect, or use `newgrp docker` to apply the group changes in the current session.
-
-## Project Structure
-
-```
-├── Dockerfile              # Main container definition
-├── docker-compose.yml      # Easy deployment configuration
-├── start.sh                # Container startup script
-├── supervisord.conf         # Process supervisor configuration
-└── README.md               # This file
-```
-
-## Features
-
-- **Android 9 (API 28)**: Full Android 9 emulator with Google APIs
-- **KasmVNC**: Modern VNC server with web interface (no noVNC dependency)
-- **Container-optimized**: Runs with software rendering for maximum compatibility
-- **User-friendly**: Simple setup with docker-compose
-- **Codespaces compatible**: Works in GitHub Codespaces and similar environments
-
-## Build the Container
+Or manually:
 
 ```bash
-# Clone or navigate to the project directory
-cd /path/to/android9-kasmvnc
-
-# Build the Docker image (this will take 15-30 minutes)
-docker build -t android9-kasmvnc .
+chmod +x install.sh
+./install.sh
 ```
 
-## Run with Docker Compose (Recommended)
+## 📋 What This Does
+
+The installation script will:
+
+1. **Install Dependencies**
+   - Docker and Docker Compose
+   - QEMU/KVM virtualization tools
+   - Required system packages
+
+2. **Create Project Structure**
+   - Dockerfile for Android 9 container
+   - Docker Compose configuration
+   - Startup scripts for services
+   - Supervisor configuration
+
+3. **Build and Start Container**
+   - Ubuntu 18.04 base with KasmVNC
+   - XFCE4 desktop environment  
+   - Android x86 9.0 ISO
+   - QEMU virtualization setup
+
+4. **Configure Services**
+   - KasmVNC server on port 5901
+   - Android VM with hardware acceleration
+   - Automatic service management
+
+## 🔌 Access Information
+
+After installation completes:
+
+- **KasmVNC Access**: Connect to `localhost:5901` with any VNC client
+- **Password**: `vnc`
+- **Resolution**: 1024x768 (configurable)
+
+## 📱 First Time Setup
+
+1. Connect to VNC at `localhost:5901`
+2. You'll see the XFCE desktop
+3. Android installation will start automatically
+4. Follow the Android setup wizard in the VM
+5. After installation, restart the container
+
+## 🛠 Management Commands
 
 ```bash
-# Start the container in background
+# Navigate to project directory
+cd ~/android9-kasmvnc
+
+# Stop the container
+docker-compose down
+
+# Start the container
 docker-compose up -d
+
+# Restart services
+docker-compose restart
 
 # View logs
 docker-compose logs -f
 
-# Stop the container
-docker-compose down
+# Check status
+docker-compose ps
+
+# Access container shell
+docker-compose exec android9-kasmvnc bash
+
+# Remove everything (clean uninstall)
+docker-compose down -v
+cd ~ && rm -rf android9-kasmvnc
 ```
 
-## Run with Docker Command
+## 🔧 Configuration Options
+
+### Change VNC Resolution
+
+Edit `docker-compose.yml`:
+
+```yaml
+environment:
+  - VNC_RESOLUTION=1920x1080  # Change this
+```
+
+### Change VNC Password
+
+Connect to container and run:
 
 ```bash
-# Run the container
-docker run -d \
-  --name android9-emulator \
-  -p 5901:5901 \
-  --privileged \
-  android9-kasmvnc
-
-# View logs
-docker logs -f android9-emulator
-
-# Stop and remove
-docker stop android9-emulator
-docker rm android9-emulator
+docker-compose exec android9-kasmvnc su - vnc
+echo 'newpassword' | vncpasswd -f > ~/.vnc/passwd
+chmod 600 ~/.vnc/passwd
+docker-compose restart
 ```
 
-## Connect to the Android Emulator
+### Allocate More RAM to Android
 
-### Method 1: VNC Client
-1. Use any VNC client (TigerVNC, RealVNC, etc.)
-2. Connect to `localhost:5901`
-3. Password: `android` (if prompted)
+Edit `scripts/start-android.sh` and change:
 
-### Method 2: Browser (KasmVNC Web Interface)
-1. Open browser and navigate to `http://localhost:6901`
-2. Login with username: `android`, password: `android`
+```bash
+-m 2048  # Change to -m 4096 for 4GB RAM
+```
 
-### Method 3: In Codespaces
-1. GitHub Codespaces will automatically detect the port 5901
-2. Click on the "Ports" tab in the terminal
-3. Click on the port 5901 to open it in browser
-4. Or use the forwarded URL with a VNC client
+## 📊 System Requirements
 
-## Container Configuration
+- **RAM**: Minimum 4GB (8GB recommended)
+- **CPU**: x64 with hardware virtualization support
+- **Storage**: 10GB+ free space
+- **OS**: Linux (Ubuntu 18.04+ recommended)
 
-### Environment Variables
-- `DISPLAY=:1` - X11 display number
-- `VNC_RESOLUTION=1280x720` - Screen resolution
-- `ANDROID_SDK_ROOT` - Android SDK location
-
-### Exposed Ports
-- `5901` - KasmVNC server port
-
-### User Account
-- Username: `android`
-- Password: `android`
-
-## Android Emulator Details
-
-- **Android Version**: Android 9 (API level 28)
-- **System Image**: Google APIs x86_64
-- **Device Profile**: Pixel
-- **GPU**: Software rendering (swiftshader_indirect)
-- **Audio**: Disabled for container compatibility
-- **Network**: Full speed, no delay simulation
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Container Won't Start
+
 ```bash
-# Check Docker is running
+# Check if KVM is available
+ls -la /dev/kvm
+
+# Check Docker status
 sudo systemctl status docker
 
-# Check logs for errors
-docker logs android9-emulator
-
-# Rebuild the image
-docker build --no-cache -t android9-kasmvnc .
+# View detailed logs
+docker-compose logs android9-kasmvnc
 ```
 
-### Can't Connect via VNC
-```bash
-# Verify port is exposed
-docker port android9-emulator
+### VNC Connection Issues
 
-# Check if VNC server is running inside container
-docker exec -it android9-emulator ps aux | grep vnc
+```bash
+# Check if port is accessible
+netstat -tlnp | grep 5901
+
+# Restart VNC service
+docker-compose exec android9-kasmvnc supervisorctl restart vnc
 ```
 
-### Android Emulator Issues
-```bash
-# Check emulator process
-docker exec -it android9-emulator ps aux | grep emulator
+### Android VM Issues
 
-# Check emulator logs
-docker exec -it android9-emulator cat /home/android/.android/avd/android9_emulator.avd/emulator_console.log
+```bash
+# Check QEMU process
+docker-compose exec android9-kasmvnc ps aux | grep qemu
+
+# View VM display (VNC port :2)
+# Connect VNC client to localhost:5902
 ```
 
 ### Performance Issues
-The emulator uses software rendering for maximum compatibility. For better performance in production:
-1. Enable KVM if available: `docker run --device /dev/kvm`
-2. Use hardware acceleration: Change `-gpu swiftshader_indirect` to `-gpu host`
-3. Increase resources: `docker run -m 4g --cpus 2`
 
-## Development Commands
+1. **Enable KVM acceleration** (requires host support):
+   ```bash
+   # Check KVM support
+   egrep -c '(vmx|svm)' /proc/cpuinfo
+   ```
 
-```bash
-# Enter container shell
-docker exec -it android9-emulator bash
+2. **Increase container resources**:
+   Edit `docker-compose.yml` to add:
+   ```yaml
+   deploy:
+     resources:
+       limits:
+         cpus: '2.0'
+         memory: 4G
+   ```
 
-# Restart VNC server inside container
-docker exec -it android9-emulator vncserver -kill :1
-docker exec -it android9-emulator vncserver :1 -geometry 1280x720
+## 🔒 Security Notes
 
-# Check Android emulator status
-docker exec -it android9-emulator /home/android/android-sdk/platform-tools/adb devices
+- VNC server runs without encryption by default
+- Container runs in privileged mode for KVM access
+- Default password is 'vnc' - change it for production use
 
-# Create new AVD (if needed)
-docker exec -it android9-emulator /home/android/android-sdk/cmdline-tools/latest/bin/avdmanager create avd -n test -k "system-images;android-28;google_apis;x86_64"
+## 📁 Project Structure
+
+```
+android9-kasmvnc/
+├── install.sh              # Main installation script
+├── Dockerfile              # Container definition
+├── docker-compose.yml      # Service orchestration
+├── supervisord.conf        # Process management
+├── scripts/
+│   ├── start-android.sh    # Android VM startup
+│   ├── start-vnc.sh        # VNC server startup
+│   └── setup-desktop.sh    # Desktop environment
+└── data/                   # Persistent data
 ```
 
-## File Permissions Fix
+## 🆘 Support
 
-If you encounter permission issues:
+If you encounter issues:
 
-```bash
-# Fix file permissions
-sudo chown -R $USER:$USER .
-chmod +x start.sh
-```
+1. Check the logs: `docker-compose logs -f`
+2. Verify system requirements
+3. Ensure KVM/virtualization is enabled
+4. Try rebuilding: `docker-compose down && docker-compose build --no-cache && docker-compose up -d`
 
-## Clean Up
+## ⚡ Performance Tips
 
-```bash
-# Remove containers and images
-docker-compose down
-docker rmi android9-kasmvnc
-docker system prune -a
-```
+- Use SSD storage for better VM performance
+- Allocate adequate RAM (4GB+ recommended)
+- Enable hardware virtualization in BIOS/UEFI
+- Close unnecessary applications to free resources
 
-## Notes
+---
 
-- First boot may take 5-10 minutes as the emulator initializes
-- Container uses `--privileged` mode for device access
-- Data is not persistent by default (emulator uses `-wipe-data`)
-- For persistent data, mount volumes as needed
-
-## Tested Environments
-
-- ✅ Ubuntu 20.04/22.04
-- ✅ GitHub Codespaces
-- ✅ Docker Desktop (Linux)
-- ✅ WSL2 with Docker Desktop
-
-## Support
-
-This setup provides a complete Android 9 development environment with KasmVNC remote access. The container is optimized for compatibility and should work in most Docker environments including Codespaces.
+**Note**: This setup uses KasmVNC exclusively - noVNC is not included or used anywhere in the configuration.
